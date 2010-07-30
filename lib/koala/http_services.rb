@@ -14,6 +14,7 @@ module Koala
       base.class_eval do
         require 'net/http' unless defined?(Net::HTTP)
         require 'net/https'
+        require 'net/http_multipart_post'
 
         def self.make_request(path, args, verb, options = {})
           # We translate args to a valid query string. If post is specified,
@@ -32,12 +33,25 @@ module Koala
           http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
           result = http.start { |http|
-            response, body = (verb == "post" ? http.post(path, encode_params(args)) : http.get("#{path}?#{encode_params(args)}"))
+            response, body = if (verb == "post")
+              if has_multipart_files?(args)
+                req = Net::HTTP::MultipartPost.new(URI.parse("https://#{server}/#{path}"), args)
+                req.post
+              else
+                http.post(path, encode_params(args))
+              end
+            else 
+              http.get("#{path}?#{encode_params(args)}")
+            end
             Koala::Response.new(response.code.to_i, body, response)
           }
         end
 
         protected
+        def self.has_multipart_files?(param_hash)
+          (param_hash || {}).values.select {|x| x.is_a?(Net::HTTP::MultipartPostFile)}.any?
+        end
+        
         def self.encode_params(param_hash)
           # TODO investigating whether a built-in method handles this
           # if no hash (e.g. no auth token) return empty string
@@ -67,4 +81,5 @@ module Koala
       end # class_eval
     end
   end
+  
 end

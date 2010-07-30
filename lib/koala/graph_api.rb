@@ -77,6 +77,11 @@ module Koala
         raise APIError.new({"type" => "KoalaMissingAccessToken", "message" => "Write operations require an access token"}) unless @access_token
         graph_call("#{parent_object}/#{connection_name}", args, "post")
       end
+      
+      def put_object_multipart(parent_object, connection_name, args = {})
+        raise APIError.new({"type" => "KoalaMissingAccessToken", "message" => "Write operations require an access token"}) unless @access_token
+        graph_call("#{parent_object}/#{connection_name}", args, "post", :multipart => true)
+      end
     
       def put_wall_post(message, attachment = {}, profile_id = "me")
         # Writes a wall post to the given profile's wall.
